@@ -27,6 +27,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.JarURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -199,7 +200,7 @@ public class ShadingPathResolver extends StandardPathResolver {
             final PluginFragment fragment) {
         for (PluginAttribute attr :
             filterCollection(descr.getAttributes("unpack"), fragment)) { //$NON-NLS-1$
-            return Boolean.valueOf("false".equalsIgnoreCase( //$NON-NLS-1$
+            return Boolean.valueOf("true".equalsIgnoreCase( //$NON-NLS-1$
                     attr.getValue()));
         }
         for (Library lib : filterCollection(descr.getLibraries(), fragment)) {
@@ -377,7 +378,10 @@ final class ShadingUtil {
             URLConnection cnn = url.openConnection();
             try {
                 cnn.setUseCaches(false);
-                cnn.setDoInput(false); // this should force using HTTP HEAD method
+                if (cnn instanceof HttpURLConnection)
+                {
+                	((HttpURLConnection)cnn).setRequestMethod("HEAD");
+                }
                 result = cnn.getLastModified();
             } finally {
                 try {

@@ -422,6 +422,7 @@ public final class StandardPluginManager extends PluginManager {
                     + " (active/total: " + activePlugins.size() //$NON-NLS-1$
                     + " of "  //$NON-NLS-1$
                     + registry.getPluginDescriptors().size() + ")"); //$NON-NLS-1$
+            activatingPlugins.remove(descr.getId());
             fireEvent(result, true);
             return result;
         } finally {
