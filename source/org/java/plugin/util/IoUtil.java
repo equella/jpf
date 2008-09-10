@@ -19,7 +19,6 @@
 package org.java.plugin.util;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -64,11 +63,9 @@ public final class IoUtil {
             throw new IOException(
                     ResourceManager.getMessage(PACKAGE_NAME, "isFolder", dest)); //$NON-NLS-1$
         }
-        BufferedInputStream in = new BufferedInputStream(
-                new FileInputStream(src));
+        InputStream in = new FileInputStream(src);
         try {
-            BufferedOutputStream out = new BufferedOutputStream(
-                    new FileOutputStream(dest, false));
+            OutputStream out = new FileOutputStream(dest, false);
             try {
                 copyStream(in, out, 1024);
             } finally {

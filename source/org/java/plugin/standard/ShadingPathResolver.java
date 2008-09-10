@@ -18,7 +18,6 @@
  *****************************************************************************/
 package org.java.plugin.standard;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileFilter;
@@ -450,7 +449,7 @@ final class ShadingUtil {
     
     private static String getRelativeUrl(final File base, final File file)
             throws IOException {
-        String result = ShadingUtil.getRelativePath(base, file);
+        String result = getRelativePath(base, file);
         if (result == null) {
             return null;
         }
@@ -467,6 +466,11 @@ final class ShadingUtil {
         if (file != null) {
             String result = getRelativeUrl(base, file);
             if (result != null) {
+                String urlStr = url.toExternalForm();
+                int p = urlStr.indexOf("!/"); //$NON-NLS-1$
+                if (p != -1) {
+                    return "jar:" + result + urlStr.substring(p); //$NON-NLS-1$
+                }
                 return result;
             }
         }
@@ -489,7 +493,7 @@ final class ShadingUtil {
         }
         int p = url.indexOf("!/"); //$NON-NLS-1$
         if (p == -1) {
-            return new URL(base, url);
+            return new URL(base, url.substring(4, p));
         }
         return new URL("jar:" //$NON-NLS-1$
                 + new URL(base, url.substring(4, p)).toExternalForm()
@@ -647,6 +651,11 @@ final class ShadowDataController {
         URL result = IoUtil.file2url(file);
         metaData.setProperty("uid:" + uid, uid); //$NON-NLS-1$
         String source = ShadingUtil.getRelativeUrl(shadowFolder, sourceUrl);
+        if (log.isDebugEnabled()) {
+            log.debug("relativize: base=" + shadowFolder //$NON-NLS-1$
+               + "; url=" + sourceUrl //$NON-NLS-1$
+               + "; result=" + source); //$NON-NLS-1$
+        }
         metaData.setProperty("source:" + uid, source); //$NON-NLS-1$
         metaData.setProperty("file:" + uid, file.getName()); //$NON-NLS-1$
         metaData.setProperty("modified:" + uid, dtf.format(modified)); //$NON-NLS-1$
@@ -713,8 +722,7 @@ final class ShadowDataController {
                     File sourceFile = IoUtil.url2file(jarFileURL);
                     InputStream in;
                     if (sourceFile != null) {
-                        in = new BufferedInputStream(
-                                new FileInputStream(sourceFile));
+                        in = new FileInputStream(sourceFile);
                     } else {
                         in = jarFileURL.openStream();
                     }
