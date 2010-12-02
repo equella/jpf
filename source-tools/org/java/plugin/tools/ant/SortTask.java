@@ -181,10 +181,11 @@ public class SortTask extends BaseJpfTask {
     
     protected Collection<PluginDescriptor> reorder(final Collection<PluginDescriptor> descriptors) {
     	Set<PluginDescriptor> rv = new LinkedHashSet<PluginDescriptor>(descriptors.size());
-        for( PluginDescriptor pd : descriptors )
-		{
-			collectPrerequisites(pd, rv);
-			rv.add(pd);
+        for( PluginDescriptor pd : descriptors ) {
+            if (!rv.contains(pd)) {
+                collectPrerequisites(pd, rv);
+                rv.add(pd);
+            }
 		}
         return rv;
     }
