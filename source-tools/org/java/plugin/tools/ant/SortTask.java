@@ -23,7 +23,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -100,9 +100,7 @@ public class SortTask extends BaseJpfTask {
                     getLocation());
         }
         initRegistry(true);
-        List<PluginDescriptor> descriptors = new ArrayList<PluginDescriptor>(
-                getRegistry().getPluginDescriptors());
-        reorder(descriptors);
+        Collection<PluginDescriptor> descriptors = reorder(getRegistry().getPluginDescriptors());
         Collection<PluginFragment> fragments =
             getRegistry().getPluginFragments();
         List<UniqueIdentity> manifests = new ArrayList<UniqueIdentity>(
@@ -181,27 +179,14 @@ public class SortTask extends BaseJpfTask {
         return manifestFile;
     }
     
-    protected void reorder(final List<PluginDescriptor> descriptors) {
-        for (int i = 0; i < descriptors.size(); i++) {
-            for (int j = i + 1; j < descriptors.size(); j++) {
-                if (isDepends(descriptors.get(i), descriptors.get(j))) {
-                    Collections.swap(descriptors, i, j);
-                    i = -1;
-                    break;
-                }
-            }
-        }
-    }
-
-    private boolean isDepends(final PluginDescriptor descr1,
-            final PluginDescriptor descr2) {
-        // Circular (mutual) dependencies are treated as absence of dependency
-        // at all.
-        Set<PluginDescriptor> pre1 = new HashSet<PluginDescriptor>();
-        Set<PluginDescriptor> pre2 = new HashSet<PluginDescriptor>();
-        collectPrerequisites(descr1, pre1);
-        collectPrerequisites(descr2, pre2);
-        return pre1.contains(descr2) && !pre2.contains(descr1);
+    protected Collection<PluginDescriptor> reorder(final Collection<PluginDescriptor> descriptors) {
+    	Set<PluginDescriptor> rv = new LinkedHashSet<PluginDescriptor>(descriptors.size());
+        for( PluginDescriptor pd : descriptors )
+		{
+			collectPrerequisites(pd, rv);
+			rv.add(pd);
+		}
+        return rv;
     }
     
     private void collectPrerequisites(final PluginDescriptor descr,
@@ -212,8 +197,9 @@ public class SortTask extends BaseJpfTask {
             }
             PluginDescriptor descriptor =
                 getRegistry().getPluginDescriptor(pre.getPluginId());
-            if (result.add(descriptor)) {
+            if (!result.contains(descriptor)) {
                 collectPrerequisites(descriptor, result);
+                result.add(descriptor);
             }
         }
     }
