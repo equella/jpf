@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="JPF 1.5.x build file" default="help" basedir=".">
+	<property name="app.name" value="jpf"/>
+	<property name="app.version" value="1.5.1"/>
+
+	<property file="build.properties"/>
+
+	<property name="build.home" value="${basedir}/build"/>
+	<property name="build.docs" value="${build.home}/docs"/>
+	<property name="build.javadoc" value="${build.docs}/api"/>
+	<property name="build.classes" value="${build.home}/classes"/>
+	<property name="build.classes-tools" value="${build.home}/classes-tools"/>
+	<property name="build.classes-boot" value="${build.home}/classes-boot"/>
+	<property name="build.lib" value="${build.home}/lib"/>
+
+	<property name="src.home" value="${basedir}/source"/>
+	<property name="src-tools.home" value="${basedir}/source-tools"/>
+	<property name="src-boot.home" value="${basedir}/source-boot"/>
+	
+	<property name="standard.excludes" value="**/build/,**/*.log*,**/classes/,**/CVS/,**/.*,**/.*/"/>
+
+	<property name="compile.debug" value="true"/>
+	<property name="compile.optimize" value="false"/>
+	<property name="compile.target-vm" value="1.5"/>
+	<property name="javadoc.access" value="protected"/>
+	<property name="javadoc.use" value="true"/>
+	<property name="javadoc.notree" value="false"/>
+	<property name="javadoc.nonavbar" value="false"/>
+	<property name="javadoc.noindex" value="false"/>
+	<property name="javadoc.splitindex" value="false"/>
+	<property name="javadoc.author" value="true"/>
+	<property name="javadoc.version" value="true"/>
+	<property name="javadoc.nodeprecatedlist" value="false"/>
+	<property name="javadoc.nodeprecated" value="false"/>
+	
+	<path id="classpath">
+		<fileset dir="${basedir}/lib">
+			<include name="*.jar"/>
+		</fileset>
+		<pathelement path="${build.classes}"/>
+	</path>
+	
+	<target name="help">
+		<echo><![CDATA[
+${app.name} build file:
+dist  - creates binary and source distribution packages
+jar   - creates JAR files
+docs  - generates documentation
+build - compiles entire project
+]]></echo>
+	</target>
+	
+	<target name="clean">
+		<tstamp>
+			<format property="dt-stamp" pattern="yyyy-MM-dd-HH-mm"/>
+			<format property="d-stamp" pattern="yyyy-MM-dd"/>
+		</tstamp>
+		<delete dir="${build.home}" quiet="true"/>
+	</target>
+	
+	<target name="-init">
+		<mkdir dir="${build.home}"/>
+		<mkdir dir="${build.classes}"/>
+		<mkdir dir="${build.classes-tools}"/>
+		<mkdir dir="${build.classes-boot}"/>
+		<mkdir dir="${build.lib}"/>
+		<available property="lib.ant.present" file="${lib.ant}"/>
+	</target>
+	
+	<target name="build" depends="-init" description="Compiles entire project">
+		<!-- compile core classes -->
+		<javac
+			destdir="${build.classes}"
+			srcdir="${src.home}"
+			classpathref="classpath"
+			excludes=""
+			target="${compile.target-vm}"
+			debug="${compile.debug}"
+			optimize="${compile.optimize}"
+			deprecation="true"/>
+		<!-- compile tools classes -->
+		<javac
+			destdir="${build.classes-tools}"
+			srcdir="${src-tools.home}"
+			classpathref="classpath"
+			excludes=""
+			target="${compile.target-vm}"
+			debug="${compile.debug}"
+			optimize="${compile.optimize}"
+			deprecation="true"/>
+		<!-- compile boot classes -->
+		<javac
+			destdir="${build.classes-boot}"
+			srcdir="${src-boot.home}"
+			classpathref="classpath"
+			excludes=""
+			target="${compile.target-vm}"
+			debug="${compile.debug}"
+			optimize="${compile.optimize}"
+			deprecation="true"/>
+	</target>
+	
+	<target name="jar" depends="build" description="Creates JAR files">
+		<jar destfile="${build.lib}/${app.name}.jar">
+			<manifest>
+				<attribute name="Class-Path" value="commons-logging.jar"/>
+				<!--attribute name="Name" value="org/java/plugin"/-->
+				<attribute name="Specification-Title" value="Java Plug-in Framework (JPF) - core library"/>
+				<attribute name="Specification-Version" value="${app.version}"/>
+				<attribute name="Specification-Vendor" value="http://jpf.sourceforge.net"/>
+				<attribute name="Implementation-Title" value="org.java.plugin"/>
+				<attribute name="Implementation-Version" value="${app.version}"/>
+				<attribute name="Implementation-Vendor" value="http://jpf.sourceforge.net"/>
+			</manifest>
+			<fileset dir="${build.classes}"/>
+			<fileset dir="${src.home}" excludes="**/*.java,**/*.jpage,**/.*"/>
+		</jar>
+		<jar destfile="${build.lib}/${app.name}-tools.jar">
+			<manifest>
+				<attribute name="Class-Path" value="${app.name}.jar jxp.jar"/>
+				<!--attribute name="Name" value="org/java/plugin/tools"/-->
+				<attribute name="Specification-Title" value="Java Plug-in Framework (JPF) - tools library"/>
+				<attribute name="Specification-Version" value="${app.version}"/>
+				<attribute name="Specification-Vendor" value="http://jpf.sourceforge.net"/>
+				<attribute name="Implementation-Title" value="org.java.plugin.tools"/>
+				<attribute name="Implementation-Version" value="${app.version}"/>
+				<attribute name="Implementation-Vendor" value="http://jpf.sourceforge.net"/>
+			</manifest>
+			<fileset dir="${build.classes-tools}"/>
+			<fileset dir="${src-tools.home}" excludes="**/*.java,**/*.jpage,**/.*"/>
+		</jar>
+		<jar destfile="${build.lib}/${app.name}-boot.jar">
+			<manifest>
+				<attribute name="Main-Class" value="org.java.plugin.boot.Boot"/>
+				<attribute name="Class-Path" value="${app.name}.jar ${app.name}-tools.jar log4j.jar"/>
+				<!--attribute name="Name" value="org/java/plugin/boot"/-->
+				<attribute name="Specification-Title" value="Java Plug-in Framework (JPF) - application boot library"/>
+				<attribute name="Specification-Version" value="${app.version}"/>
+				<attribute name="Specification-Vendor" value="http://jpf.sourceforge.net"/>
+				<attribute name="Implementation-Title" value="org.java.plugin.boot"/>
+				<attribute name="Implementation-Version" value="${app.version}"/>
+				<attribute name="Implementation-Vendor" value="http://jpf.sourceforge.net"/>
+			</manifest>
+			<fileset dir="${build.classes-boot}"/>
+			<fileset dir="${src-boot.home}" excludes="**/*.java,**/*.jpage,**/.*"/>
+		</jar>
+	</target>
+	
+    <target name="-javadoc">
+    	<delete dir="${build.javadoc}" quiet="true"/>
+    	<mkdir dir="${build.javadoc}"/>
+        <javadoc
+        	destdir="${build.javadoc}"
+        	access="${javadoc.access}"
+            use="${javadoc.use}"
+            notree="${javadoc.notree}"
+            nonavbar="${javadoc.nonavbar}"
+            noindex="${javadoc.noindex}"
+            splitindex="${javadoc.splitindex}"
+            author="${javadoc.author}"
+            version="${javadoc.version}"
+            nodeprecatedlist="${javadoc.nodeprecatedlist}"
+            nodeprecated="${javadoc.nodeprecated}"
+            classpathref="classpath"
+        	header="JPF ${app.version}">
+        	<doctitle><![CDATA[Java Plug-in Framework (JPF) API (ver. ${app.version})]]></doctitle>
+			<bottom><![CDATA[<i>Copyright &#169; 2004-2007 Dmitry Olshansky. All Rights Reserved.</i>]]></bottom>
+        	<packageset dir="${src.home}">
+        		<exclude name="org/java/plugin/standard/**,org/java/plugin/registry/xml/**" />
+			</packageset>
+        	<packageset dir="${src-tools.home}"/>
+        	<packageset dir="${src-boot.home}"/>
+        	<classpath path="${java.class.path}"/><!-- to make ant.jar available for javadoc -->
+        	<group title="JPF Core API" packages="org.java.plugin,org.java.plugin.registry,org.java.plugin.util" />
+        	<group title="JPF Tools API" packages="org.java.plugin.tools.*" />
+        	<group title="JPF Boot API" packages="org.java.plugin.boot" />
+    	</javadoc>
+    </target>
+    
+    <target name="docs" description="Generates documentation">
+    	<delete dir="${build.docs}" quiet="true"/>
+    	<mkdir dir="${build.docs}"/>
+    	<copy file="${src.home}/org/java/plugin/registry/xml/plugin_1_0.dtd" todir="${build.docs}" preservelastmodified="true"/>
+        <copy todir="${build.docs}" preservelastmodified="true">
+            <fileset dir="${basedir}/jdocs" includes="**/*" excludes="**/*.jxp,**/*.ijxp,,.*"/>
+        	<fileset dir="${basedir}" includes="license.txt"/>
+        </copy>
+    	<copy tofile="${build.docs}/favicon.ico" file="${basedir}/jdocs/resources/images/favicon.ico" preservelastmodified="true"/>
+    	<java classname="org.onemind.jxp.JxpProcessor" classpathref="classpath" fork="true">
+    		<!-- Uncomment this when generating content for JPF web site. -->
+    		<!--jvmarg value="-Djdocs.mode=web"/-->
+    		<jvmarg value="-Djdocs.outputFolder=${build.docs}"/>
+    		<arg value="${basedir}/jdocs"/>
+    		<arg value="build.jxp"/>
+    	</java>
+    	<antcall target="-javadoc"/>
+	</target>
+	
+    <target name="dist" depends="clean,jar,docs" description="Creates distribution packages">
+    	<zip destfile="${build.home}/${app.name}-bin-${app.version}.zip" duplicate="fail" update="false">
+    		<fileset dir="${build.lib}" includes="*.jar"/>
+    		<zipfileset prefix="docs" dir="${build.docs}"/>
+    		<fileset dir="${basedir}" excludes="${standard.excludes},source*/,jdocs/,build*,todo.txt,BUILD.txt"/>
+    	</zip>
+    	<zip destfile="${build.home}/${app.name}-src-${app.version}.zip" duplicate="fail" update="false">
+    		<fileset dir="${basedir}" excludes="${standard.excludes},todo.txt"/>
+    	</zip>
+		<delete includeemptydirs="true" quiet="true">
+			<fileset dir="${build.home}">
+				<include name="**/*" />
+				<exclude name="${app.name}-???-${app.version}.zip" />
+			</fileset>
+		</delete>
+    </target>
+</project>

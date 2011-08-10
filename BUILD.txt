@@ -1,0 +1,42 @@
+$Id$
+
+JPF Build Instructions
+
+STEP 0. Prerequisites.
+To build JPF from source code you'll need the following software to be installed
+on your computer:
+- Java SDK (JDK) version 1.5 or newer;
+- Apache Ant version 1.5 or newer.
+All other required libraries are included into JPF source code distribution
+package.
+
+STEP 1. Get JPF source code.
+Download JPF source code archive from the project web site
+  http://sourceforge.net/project/showfiles.php?group_id=110394
+and unpack it to any directory.
+
+STEP 2. Adjust build parameters (optional step).
+JPF top-level directory contains "build.properties" and "build.xml" files. By
+default, you do not need to change any of the settings in these files, but you
+do need to run Ant from this location so it knows where to find them. If you
+wish to change build parameters, edit build.properties file instead of
+"build.xml".
+
+STEP 2. Run Ant.
+Assuming you have Ant in your PATH and have set ANT_HOME to the location of your
+Ant installation, typing "ant" at the shell prompt should run Ant. Ant will by
+default look for the "build.xml" file in your current directory, and display
+available JPF build targets with short descriptions. To get binary distribution
+package of JPF type:
+  ant dist
+To get JPF JAR files only type:
+  ant jar
+
+
+For further information on JPF, go to:
+  http://jpf.sourceforge.net
+
+Please join the JPF open discussion by visiting this site:
+  http://sourceforge.net/forum/forum.php?forum_id=378299
+
+Copyright (C) 2006-2007 Dmitry Olshansky
