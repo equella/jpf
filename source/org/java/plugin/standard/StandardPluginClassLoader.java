@@ -53,7 +53,7 @@ import org.java.plugin.util.IoUtil;
 
 /**
  * Standard implementation of plug-in class loader.
- *
+ * 
  * @version $Id: StandardPluginClassLoader.java,v 1.8 2007/04/07 12:39:50 ddimon
  *          Exp $
  */
@@ -187,12 +187,11 @@ public class StandardPluginClassLoader extends PluginClassLoader
 	private final Set<String> localPackages = new HashSet<String>();
 	private final Map<String, LinkedList<PluginDescriptor>> pluginPackages = new HashMap<String, LinkedList<PluginDescriptor>>();
 	private DynamicClassLoader dynamicClassLoader;
-	private volatile int failedLocal = 0;
 
 	/**
 	 * Creates class instance configured to load classes and resources for given
 	 * plug-in.
-	 *
+	 * 
 	 * @param aManager plug-in manager instance
 	 * @param descr plug-in descriptor
 	 * @param parent parent class loader, usually this is JPF "host" application
@@ -495,7 +494,6 @@ public class StandardPluginClassLoader extends PluginClassLoader
 			}
 			catch( ClassNotFoundException cnfe )
 			{
-				failedLocal++;
 				if( debugEnabled )
 				{
 					log.debug("loadLocalClass: class loading failed," + " name=" + name + ", this="
@@ -1283,7 +1281,7 @@ public class StandardPluginClassLoader extends PluginClassLoader
 		/**
 		 * Creates loader instance configured to load resources only from given
 		 * URLs.
-		 *
+		 * 
 		 * @param urls array of resource URLs
 		 */
 		PluginResourceLoader(final URL[] urls)
