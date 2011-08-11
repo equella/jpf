@@ -42,7 +42,6 @@ import java.util.Set;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.java.plugin.PathResolver;
-import org.java.plugin.Plugin;
 import org.java.plugin.PluginClassLoader;
 import org.java.plugin.PluginManager;
 import org.java.plugin.registry.Library;
@@ -175,9 +174,7 @@ public class StandardPluginClassLoader extends PluginClassLoader
 		return libCacheFolder;
 	}
 
-	private PluginDescriptor[] publicImports;
-	private PluginDescriptor[] privateImports;
-	private PluginDescriptor[] reverseLookups;
+	private Set<PluginDescriptor> accessibleImports;
 	private PluginResourceLoader resourceLoader;
 	private Map<String, ResourceFilter> resourceFilters;
 	private Map<String, File> libraryCache;
@@ -185,8 +182,10 @@ public class StandardPluginClassLoader extends PluginClassLoader
 	private boolean localClassLoadingOptimization = true;
 	private boolean foreignClassLoadingOptimization = true;
 	private final Set<String> localPackages = new HashSet<String>();
-	private final Map<String, LinkedList<PluginDescriptor>> pluginPackages = new HashMap<String, LinkedList<PluginDescriptor>>();
 	private DynamicClassLoader dynamicClassLoader;
+	private static final Map<String, LinkedList<PluginDescriptor>> packageCache = new HashMap<String, LinkedList<PluginDescriptor>>();
+
+	// private static AtomicInteger failedFinds = new AtomicInteger();
 
 	/**
 	 * Creates class instance configured to load classes and resources for given
@@ -210,55 +209,30 @@ public class StandardPluginClassLoader extends PluginClassLoader
 	protected void collectImports()
 	{
 		// collect imported plug-ins (exclude duplicates)
-		final Map<String, PluginDescriptor> publicImportsMap = new HashMap<String, PluginDescriptor>();
-		final Map<String, PluginDescriptor> privateImportsMap = new HashMap<String, PluginDescriptor>();
-		PluginRegistry registry = getPluginDescriptor().getRegistry();
-		for( PluginPrerequisite pre : getPluginDescriptor().getPrerequisites() )
+		accessibleImports = new HashSet<PluginDescriptor>();
+		collectPlugins(accessibleImports, getPluginDescriptor(), true);
+	}
+
+	private void collectPlugins(Set<PluginDescriptor> importSet, PluginDescriptor descriptor,
+		boolean includePrivate)
+	{
+		PluginRegistry registry = descriptor.getRegistry();
+		for( PluginPrerequisite pre : descriptor.getPrerequisites() )
 		{
 			if( !pre.matches() )
 			{
 				continue;
 			}
 			PluginDescriptor preDescr = registry.getPluginDescriptor(pre.getPluginId());
-			if( pre.isExported() )
+			if( pre.isExported() || includePrivate )
 			{
-				publicImportsMap.put(preDescr.getId(), preDescr);
-			}
-			else
-			{
-				privateImportsMap.put(preDescr.getId(), preDescr);
+				if( !importSet.contains(preDescr) )
+				{
+					importSet.add(preDescr);
+					collectPlugins(importSet, preDescr, false);
+				}
 			}
 		}
-		publicImports = publicImportsMap.values().toArray(
-			new PluginDescriptor[publicImportsMap.size()]);
-		privateImports = privateImportsMap.values().toArray(
-			new PluginDescriptor[privateImportsMap.size()]);
-		// collect reverse look up plug-ins (exclude duplicates)
-		final Map<String, PluginDescriptor> reverseLookupsMap = new HashMap<String, PluginDescriptor>();
-		for( PluginDescriptor descr : registry.getPluginDescriptors() )
-		{
-			if( descr.equals(getPluginDescriptor()) || publicImportsMap.containsKey(descr.getId())
-				|| privateImportsMap.containsKey(descr.getId()) )
-			{
-				continue;
-			}
-			for( PluginPrerequisite pre : descr.getPrerequisites() )
-			{
-				if( !pre.getPluginId().equals(getPluginDescriptor().getId())
-					|| !pre.isReverseLookup() )
-				{
-					continue;
-				}
-				if( !pre.matches() )
-				{
-					continue;
-				}
-				reverseLookupsMap.put(descr.getId(), descr);
-				break;
-			}
-		}
-		reverseLookups = reverseLookupsMap.values().toArray(
-			new PluginDescriptor[reverseLookupsMap.size()]);
 	}
 
 	protected void collectFilters()
@@ -318,10 +292,6 @@ public class StandardPluginClassLoader extends PluginClassLoader
 		{
 			localPackages.clear();
 		}
-		synchronized( pluginPackages )
-		{
-			pluginPackages.clear();
-		}
 	}
 
 	/**
@@ -336,16 +306,11 @@ public class StandardPluginClassLoader extends PluginClassLoader
 		}
 		libraryCache.clear();
 		resourceFilters.clear();
-		privateImports = null;
-		publicImports = null;
+		accessibleImports = null;
 		resourceLoader = null;
 		synchronized( localPackages )
 		{
 			localPackages.clear();
-		}
-		synchronized( pluginPackages )
-		{
-			pluginPackages.clear();
 		}
 	}
 
@@ -432,7 +397,7 @@ public class StandardPluginClassLoader extends PluginClassLoader
 		{
 			try
 			{
-				result = loadPluginClass(name, resolve, tryLocal, this, null, true, true);
+				result = loadPluginClass(name, resolve, tryLocal, this, null);
 			}
 			catch( ClassNotFoundException cnfe )
 			{
@@ -451,7 +416,7 @@ public class StandardPluginClassLoader extends PluginClassLoader
 			}
 			catch( ClassNotFoundException cnfe )
 			{
-				result = loadPluginClass(name, resolve, tryLocal, this, null, true, true);
+				result = loadPluginClass(name, resolve, tryLocal, this, null);
 			}
 		}
 		if( result != null )
@@ -473,6 +438,7 @@ public class StandardPluginClassLoader extends PluginClassLoader
 			result = dynamicClassLoader.findClass(name);
 			if( result != null )
 			{
+				registerPacakge(result);
 				return result;
 			}
 		}
@@ -491,9 +457,18 @@ public class StandardPluginClassLoader extends PluginClassLoader
 			try
 			{
 				result = findClass(name);
+				registerPacakge(result);
 			}
 			catch( ClassNotFoundException cnfe )
 			{
+				// int failures = failedFinds.incrementAndGet();
+				// log.info("Failure on " + name + " in " +
+				// getPluginDescriptor().getId() + " from "
+				// + requestor.getPluginDescriptor().getId());
+				// if( failures % 5 == 0 )
+				// {
+				// log.info("Failed findClass() " + failures + " times");
+				// }
 				if( debugEnabled )
 				{
 					log.debug("loadLocalClass: class loading failed," + " name=" + name + ", this="
@@ -518,11 +493,40 @@ public class StandardPluginClassLoader extends PluginClassLoader
 		return null;
 	}
 
+	private void registerPacakge(Class<?> cls)
+	{
+		PluginDescriptor descriptor = getPluginDescriptor();
+		String pkgName = getPackageName(cls.getName());
+		synchronized( packageCache )
+		{
+			LinkedList<PluginDescriptor> linkedList = packageCache.get(pkgName);
+			if( linkedList == null )
+			{
+				linkedList = new LinkedList<PluginDescriptor>();
+				packageCache.put(pkgName, linkedList);
+			}
+			linkedList.remove(descriptor);
+			linkedList.addFirst(descriptor);
+			if( linkedList.size() > 3 )
+			{
+				if( log.isDebugEnabled() )
+				{
+					log.debug("Same package " + pkgName + " is found in " + linkedList); //$NON-NLS-1$ //$NON-NLS-2$
+				}
+			}
+		}
+		if( log.isDebugEnabled() )
+		{
+			log.debug("registered plug-in package: name=" + pkgName //$NON-NLS-1$
+				+ ", plugin=" + descriptor); //$NON-NLS-1$
+		}
+
+	}
+
 	@SuppressWarnings("nls")
 	private Class<?> loadPluginClass(final String name, final boolean resolve,
 		final boolean tryLocal, final StandardPluginClassLoader requestor,
-		final Set<String> seenPlugins, boolean privateClasses, boolean doReverseLookups)
-		throws ClassNotFoundException
+		final Set<String> seenPlugins) throws ClassNotFoundException
 	{
 		Set<String> seen = seenPlugins;
 		if( (seen != null) && seen.contains(getPluginDescriptor().getId()) )
@@ -554,8 +558,9 @@ public class StandardPluginClassLoader extends PluginClassLoader
 			}
 			for( PluginDescriptor descr : guesses )
 			{
-				if( !seen.contains(descr.getId()) )
+				if( accessibleImports.contains(descr) && !seen.contains(descr.getId()) )
 				{
+					seen.add(descr.getId());
 					result = ((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(
 						descr)).loadLocalClass(name, resolve, requestor);
 					if( result != null )
@@ -566,7 +571,6 @@ public class StandardPluginClassLoader extends PluginClassLoader
 								+ descr.getId() + " name=" + name + ", this=" + this
 								+ ", requestor=" + requestor);
 						}
-						requestor.registerPluginPackage(result);
 						return result;
 					}
 				}
@@ -578,74 +582,42 @@ public class StandardPluginClassLoader extends PluginClassLoader
 			if( result != null )
 			{
 				checkClassVisibility(result, requestor);
-				if( requestor != this )
-				{
-					requestor.registerPluginPackage(result);
-				}
 				return result;
 			}
 		}
+
 		if( debugEnabled )
 		{
 			log.debug("loadPluginClass: local class not found, name=" //$NON-NLS-1$
 				+ name + ", this=" //$NON-NLS-1$
 				+ this + ", requestor=" + requestor); //$NON-NLS-1$
 		}
-		for( PluginDescriptor element : publicImports )
+		guesses = guessParentPackagePlugin(name);
+		for( PluginDescriptor descr : guesses )
 		{
-			if( seen.contains(element.getId()) )
+			if( accessibleImports.contains(descr) && !seen.contains(descr.getId()) )
 			{
-				continue;
-			}
-			result = ((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(element))
-				.loadPluginClass(name, resolve, true, requestor, seen, false, false);
-			if( result != null )
-			{
-				break; // found class in publicly imported plug-in
-			}
-		}
-		if( privateClasses && (result == null) )
-		{
-			for( PluginDescriptor element : privateImports )
-			{
-				if( seen.contains(element.getId()) )
-				{
-					continue;
-				}
-				result = ((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(
-					element)).loadPluginClass(name, resolve, true, requestor, seen, false, false);
+				seen.add(descr.getId());
+				result = ((StandardPluginClassLoader) getPluginManager()
+					.getPluginClassLoader(descr)).loadLocalClass(name, resolve, requestor);
 				if( result != null )
 				{
-					break; // found class in privately imported plug-in
+					return result;
 				}
 			}
 		}
-		/*
-		if( doReverseLookups && result == null )
+		for( PluginDescriptor descr : accessibleImports )
 		{
-			for( PluginDescriptor element : reverseLookups )
+			if( !seen.contains(descr.getId()) )
 			{
-				if( seen.contains(element.getId()) )
-				{
-					continue;
-				}
-				if( !getPluginManager().isPluginActivated(element)
-					&& !getPluginManager().isPluginActivating(element) )
-				{
-					continue;
-				}
-				result = ((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(
-					element)).loadPluginClass(name, resolve, true, requestor, seen, false, true);
+				seen.add(descr.getId());
+				result = ((StandardPluginClassLoader) getPluginManager()
+					.getPluginClassLoader(descr)).loadLocalClass(name, resolve, requestor);
 				if( result != null )
 				{
-					break; // found class in plug-in that marks itself as
-							// allowed reverse look up
+					break;
 				}
 			}
-		}*/
-		if( result != null )
-		{
-			registerPluginPackage(result);
 		}
 		return result;
 	}
@@ -696,9 +668,9 @@ public class StandardPluginClassLoader extends PluginClassLoader
 		{
 			return null;
 		}
-		synchronized( pluginPackages )
+		synchronized( packageCache )
 		{
-			LinkedList<PluginDescriptor> list = pluginPackages.get(pkgName);
+			LinkedList<PluginDescriptor> list = packageCache.get(pkgName);
 			if( list == null )
 			{
 				return null;
@@ -707,46 +679,27 @@ public class StandardPluginClassLoader extends PluginClassLoader
 		}
 	}
 
-	private void registerPluginPackage(final Class<?> cls)
+	private List<PluginDescriptor> guessParentPackagePlugin(final String className)
 	{
-		if( !foreignClassLoadingOptimization )
+		String pkgName = getPackageName(className);
+		List<PluginDescriptor> parentDescriptors = new ArrayList<PluginDescriptor>();
+		synchronized( packageCache )
 		{
-			return;
-		}
-		Plugin plugin = getPluginManager().getPluginFor(cls);
-		if( plugin == null )
-		{
-			return;
-		}
-		String pkgName = getPackageName(cls.getName());
-		if( pkgName == null )
-		{
-			return;
-		}
-		PluginDescriptor descriptor = plugin.getDescriptor();
-		synchronized( pluginPackages )
-		{
-			LinkedList<PluginDescriptor> linkedList = pluginPackages.get(pkgName);
-			if( linkedList == null )
+			while( pkgName != null )
 			{
-				linkedList = new LinkedList<PluginDescriptor>();
-				pluginPackages.put(pkgName, linkedList);
-			}
-			linkedList.remove(descriptor);
-			linkedList.addFirst(descriptor);
-			if( linkedList.size() > 3 )
-			{
-				if( log.isDebugEnabled() )
+				pkgName = getPackageName(pkgName);
+				if( pkgName == null )
 				{
-					log.debug("Same package " + pkgName + " is found in " + linkedList); //$NON-NLS-1$ //$NON-NLS-2$
+					return parentDescriptors;
+				}
+				LinkedList<PluginDescriptor> list = packageCache.get(pkgName);
+				if( list != null )
+				{
+					parentDescriptors.addAll(list);
 				}
 			}
 		}
-		if( log.isDebugEnabled() )
-		{
-			log.debug("registered plug-in package: name=" + pkgName //$NON-NLS-1$
-				+ ", plugin=" + descriptor); //$NON-NLS-1$
-		}
+		return parentDescriptors;
 	}
 
 	private String getPackageName(final String className)
@@ -1012,7 +965,7 @@ public class StandardPluginClassLoader extends PluginClassLoader
 				+ this + ", requestor=" + requestor); //$NON-NLS-1$
 		}
 		seen.add(getPluginDescriptor().getId());
-		for( PluginDescriptor element : publicImports )
+		for( PluginDescriptor element : accessibleImports )
 		{
 			if( seen.contains(element.getId()) )
 			{
@@ -1023,39 +976,6 @@ public class StandardPluginClassLoader extends PluginClassLoader
 			if( result != null )
 			{
 				break; // found resource in publicly imported plug-in
-			}
-		}
-		if( (this == requestor) && (result == null) )
-		{
-			for( PluginDescriptor element : privateImports )
-			{
-				if( seen.contains(element.getId()) )
-				{
-					continue;
-				}
-				result = ((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(
-					element)).findResource(name, requestor, seen);
-				if( result != null )
-				{
-					break; // found resource in privately imported plug-in
-				}
-			}
-		}
-		if( result == null )
-		{
-			for( PluginDescriptor element : reverseLookups )
-			{
-				if( seen.contains(element.getId()) )
-				{
-					continue;
-				}
-				result = ((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(
-					element)).findResource(name, requestor, seen);
-				if( result != null )
-				{
-					break; // found resource in plug-in that marks itself as
-					// allowed reverse look up
-				}
 			}
 		}
 		return result;
@@ -1095,28 +1015,7 @@ public class StandardPluginClassLoader extends PluginClassLoader
 			seen = new HashSet<String>();
 		}
 		seen.add(getPluginDescriptor().getId());
-		for( PluginDescriptor element : publicImports )
-		{
-			if( seen.contains(element.getId()) )
-			{
-				continue;
-			}
-			((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(element))
-				.findResources(result, name, requestor, seen);
-		}
-		if( this == requestor )
-		{
-			for( PluginDescriptor element : privateImports )
-			{
-				if( seen.contains(element.getId()) )
-				{
-					continue;
-				}
-				((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(element))
-					.findResources(result, name, requestor, seen);
-			}
-		}
-		for( PluginDescriptor element : reverseLookups )
+		for( PluginDescriptor element : accessibleImports )
 		{
 			if( seen.contains(element.getId()) )
 			{
