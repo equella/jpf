@@ -427,7 +427,7 @@ public class StandardPluginClassLoader extends PluginClassLoader
 	}
 
 	@SuppressWarnings("nls")
-	private Class<?> loadLocalClass(final String name, final boolean resolve,
+	public Class<?> loadLocalClass(final String name, final boolean resolve,
 		final StandardPluginClassLoader requestor) throws ClassNotFoundException
 	{
 		boolean debugEnabled = log.isDebugEnabled();
