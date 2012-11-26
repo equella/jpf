@@ -22,8 +22,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -32,6 +32,7 @@ import org.java.plugin.registry.Extension;
 import org.java.plugin.registry.ExtensionPoint;
 import org.java.plugin.registry.Identity;
 import org.java.plugin.registry.IntegrityCheckReport;
+import org.java.plugin.registry.IntegrityCheckReport.ReportItem;
 import org.java.plugin.registry.ManifestInfo;
 import org.java.plugin.registry.ManifestProcessingException;
 import org.java.plugin.registry.MatchingRule;
@@ -40,7 +41,6 @@ import org.java.plugin.registry.PluginFragment;
 import org.java.plugin.registry.PluginPrerequisite;
 import org.java.plugin.registry.PluginRegistry;
 import org.java.plugin.registry.Version;
-import org.java.plugin.registry.IntegrityCheckReport.ReportItem;
 import org.java.plugin.registry.xml.IntegrityChecker.ReportItemImpl;
 import org.java.plugin.util.ExtendedProperties;
 
@@ -788,9 +788,22 @@ public final class PluginRegistryImpl implements PluginRegistry
 	/**
 	 * @see org.java.plugin.registry.PluginRegistry#getDependingPlugins(org.java.plugin.registry.PluginDescriptor)
 	 */
+	@Override
 	public Collection<PluginDescriptor> getDependingPlugins(final PluginDescriptor descr)
 	{
 		Map<String, PluginDescriptor> result = new HashMap<String, PluginDescriptor>();
+		addDependencies(descr, result);
+		result.remove(descr.getId());
+		return result.values();
+	}
+
+	private void addDependencies(PluginDescriptor descr, Map<String, PluginDescriptor> already)
+	{
+		if( already.containsKey(descr.getId()) )
+		{
+			return;
+		}
+		already.put(descr.getId(), descr);
 		for( PluginDescriptor dependedDescr : getPluginDescriptors() )
 		{
 			if( dependedDescr.getId().equals(descr.getId()) )
@@ -803,21 +816,10 @@ public final class PluginRegistryImpl implements PluginRegistry
 				{
 					continue;
 				}
-				if( !result.containsKey(dependedDescr.getId()) )
-				{
-					result.put(dependedDescr.getId(), dependedDescr);
-					for( PluginDescriptor descriptor : getDependingPlugins(dependedDescr) )
-					{
-						if( !result.containsKey(descriptor.getId()) )
-						{
-							result.put(descriptor.getId(), descriptor);
-						}
-					}
-				}
+				addDependencies(dependedDescr, already);
 				break;
 			}
 		}
-		return result.values();
 	}
 
 	/**
