@@ -30,8 +30,8 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
@@ -243,7 +243,13 @@ public abstract class BaseJpfTask extends MatchingTask {
     
     protected URL getManifestURL(final File file) throws MalformedURLException {
         if(file.getName().endsWith(".jar") || file.getName().endsWith(".zip")) { //$NON-NLS-1$ //$NON-NLS-2$
-            URL url = new URL("jar:" + IoUtil.file2url(file).toExternalForm() //$NON-NLS-1$
+			URL url = new URL("jar:" + IoUtil.file2url(file).toExternalForm() //$NON-NLS-1$
+			+ "!/plugin-jpf.xml"); //$NON-NLS-1$
+			if( IoUtil.isResourceExists(url) )
+			{
+				return url;
+			}
+			url = new URL("jar:" + IoUtil.file2url(file).toExternalForm() //$NON-NLS-1$
             + "!/plugin.xml"); //$NON-NLS-1$
             if (IoUtil.isResourceExists(url)) {
                 return url;
