@@ -104,8 +104,7 @@ public class StandardPluginClassLoader extends PluginClassLoader
 		return result.toArray(new URL[result.size()]);
 	}
 
-	private static URL[] getUrls(final PluginManager manager, final PluginDescriptor descr,
-		final URL[] existingUrls)
+	private static URL[] getUrls(final PluginManager manager, final PluginDescriptor descr, final URL[] existingUrls)
 	{
 		final List<URL> urls = Arrays.asList(existingUrls);
 		final List<URL> result = new LinkedList<URL>();
@@ -213,8 +212,7 @@ public class StandardPluginClassLoader extends PluginClassLoader
 		collectPlugins(accessibleImports, getPluginDescriptor(), true);
 	}
 
-	private void collectPlugins(Set<PluginDescriptor> importSet, PluginDescriptor descriptor,
-		boolean includePrivate)
+	private void collectPlugins(Set<PluginDescriptor> importSet, PluginDescriptor descriptor, boolean includePrivate)
 	{
 		PluginRegistry registry = descriptor.getRegistry();
 		for( PluginPrerequisite pre : descriptor.getPrerequisites() )
@@ -247,8 +245,8 @@ public class StandardPluginClassLoader extends PluginClassLoader
 		}
 		for( Library lib : getPluginDescriptor().getLibraries() )
 		{
-			resourceFilters.put(getPluginManager().getPathResolver()
-				.resolvePath(lib, lib.getPath()).toExternalForm(), new ResourceFilter(lib));
+			resourceFilters.put(getPluginManager().getPathResolver().resolvePath(lib, lib.getPath()).toExternalForm(),
+				new ResourceFilter(lib));
 		}
 	}
 
@@ -339,8 +337,7 @@ public class StandardPluginClassLoader extends PluginClassLoader
 	 */
 	@SuppressWarnings("nls")
 	@Override
-	protected Class<?> loadClass(final String name, final boolean resolve)
-		throws ClassNotFoundException
+	protected Class<?> loadClass(final String name, final boolean resolve) throws ClassNotFoundException
 	{
 		Class<?> result;
 		boolean tryLocal = true;
@@ -393,42 +390,49 @@ public class StandardPluginClassLoader extends PluginClassLoader
 				return result;
 			}
 		}
-		if( probeParentLoaderLast )
+		try
 		{
-			try
+			if( probeParentLoaderLast )
 			{
-				result = loadPluginClass(name, resolve, tryLocal, this, null);
+				try
+				{
+					result = loadPluginClass(name, resolve, tryLocal, this, null);
+				}
+				catch( ClassNotFoundException cnfe )
+				{
+					result = getParent().loadClass(name);
+				}
+				if( result == null )
+				{
+					result = getParent().loadClass(name);
+				}
 			}
-			catch( ClassNotFoundException cnfe )
+			else
 			{
-				result = getParent().loadClass(name);
+				try
+				{
+					result = getParent().loadClass(name);
+				}
+				catch( ClassNotFoundException cnfe )
+				{
+					result = loadPluginClass(name, resolve, tryLocal, this, null);
+				}
 			}
-			if( result == null )
+			if( result != null )
 			{
-				result = getParent().loadClass(name);
+				return result;
 			}
 		}
-		else
+		catch( ClassNotFoundException cnfe )
 		{
-			try
-			{
-				result = getParent().loadClass(name);
-			}
-			catch( ClassNotFoundException cnfe )
-			{
-				result = loadPluginClass(name, resolve, tryLocal, this, null);
-			}
-		}
-		if( result != null )
-		{
-			return result;
+			// fallthrough for better error message
 		}
 		throw new ClassNotFoundException(name + " from " + getPluginDescriptor().getId()); //$NON-NLS-1$
 	}
 
 	@SuppressWarnings("nls")
-	public Class<?> loadLocalClass(final String name, final boolean resolve,
-		final StandardPluginClassLoader requestor) throws ClassNotFoundException
+	public Class<?> loadLocalClass(final String name, final boolean resolve, final StandardPluginClassLoader requestor)
+		throws ClassNotFoundException
 	{
 		boolean debugEnabled = log.isDebugEnabled();
 
@@ -449,8 +453,8 @@ public class StandardPluginClassLoader extends PluginClassLoader
 			{
 				if( debugEnabled )
 				{
-					log.debug("loadLocalClass: found loaded class, class=" + result + ", this="
-						+ this + ", requestor=" + requestor);
+					log.debug("loadLocalClass: found loaded class, class=" + result + ", this=" + this + ", requestor="
+						+ requestor);
 				}
 				return result; // found already loaded class in this plug-in
 			}
@@ -471,8 +475,8 @@ public class StandardPluginClassLoader extends PluginClassLoader
 				// }
 				if( debugEnabled )
 				{
-					log.debug("loadLocalClass: class loading failed," + " name=" + name + ", this="
-						+ this + ", requestor=" + requestor);
+					log.debug("loadLocalClass: class loading failed," + " name=" + name + ", this=" + this
+						+ ", requestor=" + requestor);
 				}
 			}
 		}
@@ -480,8 +484,8 @@ public class StandardPluginClassLoader extends PluginClassLoader
 		{
 			if( debugEnabled )
 			{
-				log.debug("loadLocalClass: found class, class=" + result + ", this=" + this
-					+ ", requestor=" + requestor);
+				log.debug("loadLocalClass: found class, class=" + result + ", this=" + this + ", requestor="
+					+ requestor);
 			}
 			if( resolve )
 			{
@@ -524,9 +528,8 @@ public class StandardPluginClassLoader extends PluginClassLoader
 	}
 
 	@SuppressWarnings("nls")
-	private Class<?> loadPluginClass(final String name, final boolean resolve,
-		final boolean tryLocal, final StandardPluginClassLoader requestor,
-		final Set<String> seenPlugins) throws ClassNotFoundException
+	private Class<?> loadPluginClass(final String name, final boolean resolve, final boolean tryLocal,
+		final StandardPluginClassLoader requestor, final Set<String> seenPlugins) throws ClassNotFoundException
 	{
 		Set<String> seen = seenPlugins;
 		if( (seen != null) && seen.contains(getPluginDescriptor().getId()) )
@@ -541,8 +544,7 @@ public class StandardPluginClassLoader extends PluginClassLoader
 		if( (this != requestor) && !getPluginManager().isPluginActivated(getPluginDescriptor())
 			&& !getPluginManager().isPluginActivating(getPluginDescriptor()) )
 		{
-			String msg = "can't load class " + name + ", plug-in " + getPluginDescriptor()
-				+ " is not activated yet";
+			String msg = "can't load class " + name + ", plug-in " + getPluginDescriptor() + " is not activated yet";
 			log.warn(msg);
 			throw new ClassNotFoundException(msg);
 		}
@@ -553,23 +555,22 @@ public class StandardPluginClassLoader extends PluginClassLoader
 		{
 			if( debugEnabled )
 			{
-				log.debug("loadPluginClass: trying plug-in guess, name=" + name + ", this=" + this
-					+ ", requestor=" + requestor + " guesses=" + guesses);
+				log.debug("loadPluginClass: trying plug-in guess, name=" + name + ", this=" + this + ", requestor="
+					+ requestor + " guesses=" + guesses);
 			}
 			for( PluginDescriptor descr : guesses )
 			{
 				if( accessibleImports.contains(descr) && !seen.contains(descr.getId()) )
 				{
 					seen.add(descr.getId());
-					result = ((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(
-						descr)).loadLocalClass(name, resolve, requestor);
+					result = ((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(descr))
+						.loadLocalClass(name, resolve, requestor);
 					if( result != null )
 					{
 						if( debugEnabled )
 						{
-							log.debug("loadPluginClass: plug-in guess succeeded, plugin="
-								+ descr.getId() + " name=" + name + ", this=" + this
-								+ ", requestor=" + requestor);
+							log.debug("loadPluginClass: plug-in guess succeeded, plugin=" + descr.getId() + " name="
+								+ name + ", this=" + this + ", requestor=" + requestor);
 						}
 						return result;
 					}
@@ -598,8 +599,8 @@ public class StandardPluginClassLoader extends PluginClassLoader
 			if( accessibleImports.contains(descr) && !seen.contains(descr.getId()) )
 			{
 				seen.add(descr.getId());
-				result = ((StandardPluginClassLoader) getPluginManager()
-					.getPluginClassLoader(descr)).loadLocalClass(name, resolve, requestor);
+				result = ((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(descr)).loadLocalClass(
+					name, resolve, requestor);
 				if( result != null )
 				{
 					return result;
@@ -611,8 +612,8 @@ public class StandardPluginClassLoader extends PluginClassLoader
 			if( !seen.contains(descr.getId()) )
 			{
 				seen.add(descr.getId());
-				result = ((StandardPluginClassLoader) getPluginManager()
-					.getPluginClassLoader(descr)).loadLocalClass(name, resolve, requestor);
+				result = ((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(descr)).loadLocalClass(
+					name, resolve, requestor);
 				if( result != null )
 				{
 					break;
@@ -712,8 +713,8 @@ public class StandardPluginClassLoader extends PluginClassLoader
 		return className.substring(0, p);
 	}
 
-	protected void checkClassVisibility(final Class<?> cls,
-		final StandardPluginClassLoader requestor) throws ClassNotFoundException
+	protected void checkClassVisibility(final Class<?> cls, final StandardPluginClassLoader requestor)
+		throws ClassNotFoundException
 	{
 		if( this == requestor )
 		{
@@ -742,10 +743,8 @@ public class StandardPluginClassLoader extends PluginClassLoader
 					+ ", class=" + cls + ", this=" + this //$NON-NLS-1$ //$NON-NLS-2$
 					+ ", requestor=" + requestor); //$NON-NLS-1$
 				throw new ClassNotFoundException("class " //$NON-NLS-1$
-					+ cls.getName()
-					+ " is not visible for plug-in " //$NON-NLS-1$
-					+ requestor.getPluginDescriptor().getId()
-					+ ", no filter found for library " + lib); //$NON-NLS-1$
+					+ cls.getName() + " is not visible for plug-in " //$NON-NLS-1$
+					+ requestor.getPluginDescriptor().getId() + ", no filter found for library " + lib); //$NON-NLS-1$
 			}
 			if( !filter.isClassVisible(cls.getName()) )
 			{
@@ -971,8 +970,8 @@ public class StandardPluginClassLoader extends PluginClassLoader
 			{
 				continue;
 			}
-			result = ((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(element))
-				.findResource(name, requestor, seen);
+			result = ((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(element)).findResource(name,
+				requestor, seen);
 			if( result != null )
 			{
 				break; // found resource in publicly imported plug-in
@@ -981,9 +980,8 @@ public class StandardPluginClassLoader extends PluginClassLoader
 		return result;
 	}
 
-	protected void findResources(final List<URL> result, final String name,
-		final StandardPluginClassLoader requestor, final Set<String> seenPlugins)
-		throws IOException
+	protected void findResources(final List<URL> result, final String name, final StandardPluginClassLoader requestor,
+		final Set<String> seenPlugins) throws IOException
 	{
 		Set<String> seen = seenPlugins;
 		if( (seen != null) && seen.contains(getPluginDescriptor().getId()) )
@@ -1021,13 +1019,12 @@ public class StandardPluginClassLoader extends PluginClassLoader
 			{
 				continue;
 			}
-			((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(element))
-				.findResources(result, name, requestor, seen);
+			((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(element)).findResources(result, name,
+				requestor, seen);
 		}
 	}
 
-	protected boolean isResourceVisible(final String name, final URL url,
-		final StandardPluginClassLoader requestor)
+	protected boolean isResourceVisible(final String name, final URL url, final StandardPluginClassLoader requestor)
 	{
 		if( this == requestor )
 		{
@@ -1037,8 +1034,7 @@ public class StandardPluginClassLoader extends PluginClassLoader
 		try
 		{
 			String file = url.getFile();
-			lib = new URL(url.getProtocol(), url.getHost(), file.substring(0,
-				file.length() - name.length()));
+			lib = new URL(url.getProtocol(), url.getHost(), file.substring(0, file.length() - name.length()));
 		}
 		catch( MalformedURLException mue )
 		{
@@ -1167,14 +1163,13 @@ public class StandardPluginClassLoader extends PluginClassLoader
 			{
 				return null;
 			}
-			return AccessController
-				.<PluginResourceLoader> doPrivileged(new PrivilegedAction<PluginResourceLoader>()
+			return AccessController.<PluginResourceLoader> doPrivileged(new PrivilegedAction<PluginResourceLoader>()
+			{
+				public PluginResourceLoader run()
 				{
-					public PluginResourceLoader run()
-					{
-						return new PluginResourceLoader(urls.toArray(new URL[urls.size()]));
-					}
-				});
+					return new PluginResourceLoader(urls.toArray(new URL[urls.size()]));
+				}
+			});
 		}
 
 		/**
@@ -1201,8 +1196,7 @@ public class StandardPluginClassLoader extends PluginClassLoader
 		 * @see java.lang.ClassLoader#loadClass(java.lang.String, boolean)
 		 */
 		@Override
-		protected Class<?> loadClass(final String name, final boolean resolve)
-			throws ClassNotFoundException
+		protected Class<?> loadClass(final String name, final boolean resolve) throws ClassNotFoundException
 		{
 			throw new ClassNotFoundException(name);
 		}
