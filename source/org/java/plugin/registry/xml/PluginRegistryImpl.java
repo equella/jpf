@@ -398,7 +398,7 @@ public final class PluginRegistryImpl implements PluginRegistry
 			for( PluginFragment pluginFragment : registeredFragments.values() )
 			{
 				PluginFragmentImpl fragment = (PluginFragmentImpl) pluginFragment;
-				if( fragment.matches(result) )
+				if( fragment.getPluginId().equals(model.getId()) && fragment.matches(result) )
 				{
 					result.registerFragment(fragment);
 				}
@@ -437,9 +437,9 @@ public final class PluginRegistryImpl implements PluginRegistry
 			result = new PluginFragmentImpl(this, model);
 			// register fragment with all matches plug-ins
 			boolean isRegistered = false;
-			PluginDescriptorImpl descr = (PluginDescriptorImpl) getPluginDescriptor(result
+			PluginDescriptorImpl descr = (PluginDescriptorImpl) registeredPlugins.get(result
 				.getPluginId());
-			if( result.matches(descr) )
+			if( descr != null && result.matches(descr) )
 			{
 				descr.registerFragment(result);
 				if( !registryChangeData.addedPlugins().contains(descr.getId()) )
