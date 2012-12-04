@@ -897,7 +897,7 @@ public class StandardPluginClassLoader extends PluginClassLoader
 	@Override
 	public URL findResource(final String name)
 	{
-		return findResource(name, this, null);
+		return findResource(name, this);
 	}
 
 	/**
@@ -907,18 +907,12 @@ public class StandardPluginClassLoader extends PluginClassLoader
 	public Enumeration<URL> findResources(final String name) throws IOException
 	{
 		final List<URL> result = new LinkedList<URL>();
-		findResources(result, name, this, null);
+		findResources(result, name, this);
 		return Collections.enumeration(result);
 	}
 
-	protected URL findResource(final String name, final StandardPluginClassLoader requestor,
-		final Set<String> seenPlugins)
+	private URL findLocalResource(final String name, final StandardPluginClassLoader requestor)
 	{
-		Set<String> seen = seenPlugins;
-		if( (seen != null) && seen.contains(getPluginDescriptor().getId()) )
-		{
-			return null;
-		}
 		URL result = super.findResource(name);
 		if( result != null )
 		{ // found resource in this plug-in class path
@@ -953,25 +947,26 @@ public class StandardPluginClassLoader extends PluginClassLoader
 				return null;
 			}
 		}
-		if( seen == null )
-		{
-			seen = new HashSet<String>();
-		}
+		return null;
+	}
+
+	protected URL findResource(final String name, final StandardPluginClassLoader requestor)
+	{
+		URL result = findLocalResource(name, requestor);
 		if( log.isDebugEnabled() )
 		{
 			log.debug("findResource(...): resource not found, name=" //$NON-NLS-1$
 				+ name + ", this=" //$NON-NLS-1$
 				+ this + ", requestor=" + requestor); //$NON-NLS-1$
 		}
-		seen.add(getPluginDescriptor().getId());
+		if( result != null )
+		{
+			return result;
+		}
 		for( PluginDescriptor element : accessibleImports )
 		{
-			if( seen.contains(element.getId()) )
-			{
-				continue;
-			}
-			result = ((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(element)).findResource(name,
-				requestor, seen);
+			result = ((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(element)).findLocalResource(
+				name, requestor);
 			if( result != null )
 			{
 				break; // found resource in publicly imported plug-in
@@ -980,14 +975,9 @@ public class StandardPluginClassLoader extends PluginClassLoader
 		return result;
 	}
 
-	protected void findResources(final List<URL> result, final String name, final StandardPluginClassLoader requestor,
-		final Set<String> seenPlugins) throws IOException
+	private void findLocalResources(final List<URL> result, final String name, final StandardPluginClassLoader requestor)
+		throws IOException
 	{
-		Set<String> seen = seenPlugins;
-		if( (seen != null) && seen.contains(getPluginDescriptor().getId()) )
-		{
-			return;
-		}
 		URL url;
 		for( Enumeration<URL> enm = super.findResources(name); enm.hasMoreElements(); )
 		{
@@ -1008,19 +998,16 @@ public class StandardPluginClassLoader extends PluginClassLoader
 				}
 			}
 		}
-		if( seen == null )
-		{
-			seen = new HashSet<String>();
-		}
-		seen.add(getPluginDescriptor().getId());
+	}
+
+	protected void findResources(final List<URL> result, final String name, final StandardPluginClassLoader requestor)
+		throws IOException
+	{
+		findLocalResources(result, name, requestor);
 		for( PluginDescriptor element : accessibleImports )
 		{
-			if( seen.contains(element.getId()) )
-			{
-				continue;
-			}
-			((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(element)).findResources(result, name,
-				requestor, seen);
+			((StandardPluginClassLoader) getPluginManager().getPluginClassLoader(element)).findLocalResources(result,
+				name, requestor);
 		}
 	}
 
