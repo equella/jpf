@@ -310,7 +310,7 @@ public class ShadingPathResolver extends StandardPathResolver
 		{
 			return result;
 		}
-		result = controller.shadowResource(getRegisteredContext(uid.getId()), uid.getUniqueId(),
+		result = controller.shadowResource(getRegisteredContext(uid.getId()), uid.getUniqueId().replace(':', '_'),
 			(unpackModeMap.get(uid.getId())).booleanValue());
 		shadowUrlMap.put(uid.getId(), result);
 		return result;
