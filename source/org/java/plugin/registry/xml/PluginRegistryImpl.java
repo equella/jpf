@@ -46,8 +46,7 @@ import org.java.plugin.util.ExtendedProperties;
 
 /**
  * This is an implementation of plug-in registry of XML syntax plug-in
- * manifests. Manifests should be prepared according to <a href="{@docRoot}
- * /../plugin_1_0.dtd">plug-in DTD</a>.
+ * manifests. Manifests should be prepared according to <a href="plugin_1_0.dtd">plug-in DTD</a>.
  * <p>
  * <b>Configuration parameters</b>
  * <p>

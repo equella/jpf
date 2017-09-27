@@ -56,7 +56,7 @@ import org.java.plugin.util.ExtendedProperties;
  * optimize class look-up procedure when enumerating depending plug-ins. Default
  * value is <code>true</code>.</dd>
  * </dl>
- * </p>
+ *
  * 
  * @version $Id: StandardPluginLifecycleHandler.java,v 1.5 2007/04/07 12:39:50
  *          ddimon Exp $

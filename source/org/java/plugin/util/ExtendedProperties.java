@@ -67,7 +67,7 @@ public class ExtendedProperties extends Properties
 	 * 
 	 * So the {@link java.util.Map#get(java.lang.Object)} works as usual and
 	 * returns raw (not expanded with substituted parameters) property value.
-	 * </p>
+	 *
 	 * 
 	 * @see java.util.Properties#getProperty(java.lang.String)
 	 */

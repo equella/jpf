@@ -86,7 +86,7 @@ import org.java.plugin.util.IoUtil;
  * plug-in manifest, in this case, it's value will be taken into account. The
  * default parameter value is <code>smart</code>.</dd>
  * </dl>
- * </p>
+ *
  * 
  * @version $Id: ShadingPathResolver.java,v 1.5 2007/05/13 16:31:48 ddimon Exp $
  */

@@ -329,8 +329,8 @@ public abstract class ObjectFactory
 	/**
 	 * Creates new instance of plug-in manager.
 	 * 
-	 * @param registry
-	 * @param pathResolver
+	 * @param registry the registry to use
+	 * @param pathResolver the path resolver to use
 	 * @return new plug-in manager instance
 	 */
 	public abstract PluginManager createManager(PluginRegistry registry, PathResolver pathResolver);
